@@ -680,7 +680,9 @@ function saveHistory(label) {
 
 function save(label) {
   if (label) saveHistory(label);
-  fbSave(S); // sauvegarde Firebase (async)
+  S._lastModified = Date.now();
+  S._modifiedBy = currentUser || 'unknown';
+  fbSave(S);
   updateUndoBtn();
 }
 
@@ -725,32 +727,44 @@ function showToast(msg, color) {
 async function load() {
   showLoading(true);
   const data = await fbLoad();
-  if (data) {
+  if (data && data.clients && data.clients.length > 0) {
+    // Firebase a des données → on les utilise TELLES QUELLES, sans rien injecter
     S = data;
+    S.eids = S.eids || {};
+    // Juste s'assurer que les membres requis existent (sans écraser)
+    if (!S.equipe) S.equipe = [];
+    if (!S.depenses) S.depenses = [];
+    const requiredMembers = [
+      { id: 1,  nom: 'Oren',    role: 'confirmateur', frais: 200, tel: '', notes: 'Confirmateur HABINNOVA' },
+      { id: 10, nom: 'Hillel',  role: 'commercial',   frais: 0,   tel: '', notes: '' },
+      { id: 11, nom: 'Yohan',   role: 'commercial',   frais: 0,   tel: '', notes: '' },
+      { id: 12, nom: 'Zizou',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
+      { id: 13, nom: 'Lea',     role: 'telepro',      frais: 0,   tel: '', notes: '' },
+      { id: 14, nom: 'Ruben',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
+      { id: 15, nom: 'Lior',    role: 'commercial',   frais: 0,   tel: '', notes: '' },
+      { id: 16, nom: 'Sabrina', role: 'telepro',      frais: 0,   tel: '', notes: '' },
+    ];
+    let membresAjoutes = false;
+    requiredMembers.forEach(rm => {
+      if (!S.equipe.find(m => m.id === rm.id || m.nom === rm.nom)) {
+        S.equipe.push(rm);
+        membresAjoutes = true;
+      }
+    });
+    // Sauvegarder seulement si on a ajouté des membres manquants
+    if (membresAjoutes) await fbSave(S);
   } else {
+    // Firebase est vide → première initialisation
     initDemo();
+    S.eids = S.eids || {};
+    if (!S.installateurs || S.installateurs.length === 0) initInstallateurs();
+    if (!S.equipe || S.equipe.length === 0) initEquipe();
+    if (!S.depenses) S.depenses = [];
+    if (!S.clients) S.clients = [];
+    injectRealClients();
+    injectRealDepenses();
+    await fbSave(S);
   }
-  S.eids = S.eids || {};
-  if (!S.installateurs || S.installateurs.length === 0) initInstallateurs();
-  if (!S.equipe || S.equipe.length === 0) initEquipe();
-  if (!S.depenses) S.depenses = [];
-  if (!S.clients) S.clients = [];
-  const requiredMembers = [
-    { id: 1,  nom: 'Oren',    role: 'confirmateur', frais: 200, tel: '', notes: 'Confirmateur HABINNOVA' },
-    { id: 10, nom: 'Hillel',  role: 'commercial',   frais: 0,   tel: '', notes: '' },
-    { id: 11, nom: 'Yohan',   role: 'commercial',   frais: 0,   tel: '', notes: '' },
-    { id: 12, nom: 'Zizou',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
-    { id: 13, nom: 'Lea',     role: 'telepro',      frais: 0,   tel: '', notes: '' },
-    { id: 14, nom: 'Ruben',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
-    { id: 15, nom: 'Lior',    role: 'commercial',   frais: 0,   tel: '', notes: '' },
-    { id: 16, nom: 'Sabrina', role: 'telepro',      frais: 0,   tel: '', notes: '' },
-  ];
-  requiredMembers.forEach(rm => {
-    if (!S.equipe.find(m => m.id === rm.id || m.nom === rm.nom)) S.equipe.push(rm);
-  });
-  injectRealClients();
-  injectRealDepenses();
-  await fbSave(S);
   showLoading(false);
 }
 
@@ -1637,21 +1651,24 @@ function startSync() {
       if (!r.ok) return;
       const data = await r.json();
       if (!data || !data.clients) return;
-      const newHash = JSON.stringify(data);
-      const curHash = JSON.stringify(S);
-      if (newHash !== curHash) {
-        S = data; S.eids = S.eids || {};
-        localStorage.setItem(KEY, newHash);
+      // Comparer via timestamp de dernière modification
+      const remoteTs = data._lastModified || 0;
+      const localTs = S._lastModified || 0;
+      if (remoteTs > localTs) {
+        S = data;
+        S.eids = S.eids || {};
+        localStorage.setItem(KEY, JSON.stringify(S));
         updateUndoBtn();
         const activePage = document.querySelector('.page.active');
         if (activePage) {
           const id = activePage.id.replace('page-', '');
           ({ dash: renderDash, clients: renderClients, depenses: renderDepenses, bilan: renderBilan, paiements: renderPaiements })[id]?.();
         }
-        showToast('🔄 Sync Firebase — données à jour', 'var(--blue)');
+        const who = data._modifiedBy || 'quelqu\'un';
+        showToast('🔄 ' + who + ' a modifié les données', 'var(--blue)');
       }
     } catch(e) {}
-  }, 8000);
+  }, 5000);
 }
 
 function stopSync() {
