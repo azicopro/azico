@@ -157,6 +157,94 @@ tbody tr:hover td{background:var(--bg3);}
   .main{margin-left:50px;padding:14px;}.sg{grid-template-columns:1fr 1fr;}
 }
 
+/* ===== MOBILE (< 600px) ===== */
+@media(max-width:600px){
+  /* Sidebar → bottom tab bar */
+  .sidebar{
+    width:100% !important;height:56px;top:auto;bottom:0;left:0;
+    flex-direction:row;border-right:none;border-top:1px solid var(--border);
+    z-index:100;
+  }
+  .sbl{display:none;}
+  .nav{
+    display:flex;flex-direction:row;padding:0;overflow-x:auto;
+    align-items:center;justify-content:space-around;width:100%;flex:1;
+  }
+  .ng{display:none;}
+  .ni{
+    flex-direction:column;padding:6px 4px;gap:2px;min-width:48px;
+    font-size:9px;border-radius:0;margin:0;
+  }
+  .ni span:first-child{font-size:18px;}
+  .ni::before{display:none;}
+  .ni.active{background:var(--a3);}
+  .sbf{display:none;}
+
+  /* Main content */
+  .main{margin-left:0 !important;padding:12px 10px;padding-bottom:70px;min-height:100vh;}
+
+  /* Stats grid → 2 cols */
+  .sg{grid-template-columns:1fr 1fr !important;gap:8px;}
+  .sc{padding:10px 12px;}
+  .sv{font-size:16px;}
+
+  /* Tables → card view */
+  .tw{overflow-x:auto;}
+  table{min-width:600px;}
+
+  /* Page header */
+  .ptop{flex-direction:column;gap:8px;align-items:flex-start;}
+  .ptop > div:last-child{width:100%;display:flex;flex-wrap:wrap;gap:6px;}
+
+  /* Modals → full screen */
+  .modal{width:100% !important;max-width:100vw;border-radius:14px 14px 0 0;
+    position:fixed;bottom:0;left:0;margin:0;max-height:92vh;}
+  .ov{align-items:flex-end;padding:0;}
+  .mlg{width:100% !important;}
+  .msm{width:100% !important;}
+
+  /* Forms */
+  .fgrid{grid-template-columns:1fr !important;}
+  .fgrid3{grid-template-columns:1fr !important;}
+
+  /* Bilan grid */
+  #bilan-content > div[style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr !important;
+  }
+
+  /* Charts */
+  .barchart{height:120px !important;}
+
+  /* Login */
+  .lcard{width:92vw;padding:36px 24px;}
+
+  /* Buttons */
+  .btn{font-size:11px;padding:6px 10px;}
+
+  /* Hide non-essential table columns on mobile */
+  .tw th:nth-child(n+8):not(:last-child),
+  .tw td:nth-child(n+8):not(:last-child){display:none;}
+
+  /* Page titles smaller */
+  .ptitle{font-size:16px;}
+  .sl{font-size:9px;}
+  .sh{font-size:10px;}
+
+  /* Dashboard recent - hide some cols */
+  #d-recent td:nth-child(3),
+  #d-recent td:nth-child(7),
+  #d-recent td:nth-child(8){display:none;}
+
+  /* Undo button in mobile bar */
+  #undo-btn{
+    flex-direction:column !important;padding:4px !important;gap:1px !important;
+    min-width:44px;border-radius:0 !important;border:none !important;
+    margin:0 !important;font-size:9px !important;
+    position:relative;display:flex !important;
+  }
+  #undo-lbl{font-size:8px;max-width:44px;text-align:center;overflow:hidden;white-space:nowrap;}
+}
+
 </style>
 </head>
 <body>
@@ -189,22 +277,20 @@ tbody tr:hover td{background:var(--bg3);}
   </div>
   <nav class="nav">
     <div class="ng">Principal</div>
-    <div class="ni active" onclick="go('dash')"><span>&#128202;</span><span>Tableau de bord</span></div>
+    <div class="ni active" onclick="go('dash')"><span>&#128202;</span><span>Dashboard</span></div>
     <div class="ni" onclick="go('clients')"><span>&#9889;</span><span>Installations</span></div>
     <div class="ni" onclick="go('depenses')"><span>&#128176;</span><span>D&eacute;penses</span></div>
-    <div class="ng">Finance</div>
-    <div class="ni" onclick="go('bilan')"><span>&#128200;</span><span>Bilan mensuel</span></div>
+    <div class="ni" onclick="go('bilan')"><span>&#128200;</span><span>Bilan</span></div>
     <div class="ni" onclick="go('paiements')"><span>&#9989;</span><span>Paiements</span></div>
-    <div class="ng">Param&egrave;tres</div>
-    <div class="ni" onclick="go('installateurs')"><span>&#128295;</span><span>Installateurs</span></div>
+    <div class="ni" onclick="go('installateurs')"><span>&#128295;</span><span>Install.</span></div>
     <div class="ni" onclick="go('equipe')"><span>&#128101;</span><span>&Eacute;quipe</span></div>
-    <div class="ni" onclick="go('config')"><span>&#9881;</span><span>Configuration</span></div>
-  </nav>
-  <div class="sbf">
-    <div id="undo-btn" onclick="undo()" style="display:none;align-items:center;gap:6px;background:var(--r2);border:1px solid rgba(231,76,60,.25);border-radius:7px;padding:7px 10px;cursor:pointer;margin-bottom:8px;font-size:11px;color:var(--red)" title="">
+    <div class="ni" onclick="go('config')"><span>&#9881;</span><span>Config</span></div>
+    <div id="undo-btn" onclick="undo()" style="display:none;align-items:center;gap:6px;background:var(--r2);border:1px solid rgba(231,76,60,.25);border-radius:7px;padding:7px 10px;cursor:pointer;font-size:11px;color:var(--red)" title="">
       <span style="font-size:14px">↩</span>
       <div style="min-width:0"><div style="font-weight:600">Annuler</div><div id="undo-lbl" style="color:var(--text3);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px"></div></div>
     </div>
+  </nav>
+  <div class="sbf">
     <div style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px" onclick="doLogout()"><span>⬡</span><span>Déconnexion</span></div>
   </div>
 </div>
