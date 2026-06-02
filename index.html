@@ -810,7 +810,10 @@ async function fbSave(data) {
 
 async function fbLoad() {
   try {
-    const r = await fetch(FB_REST);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const r = await fetch(FB_REST, { signal: controller.signal });
+    clearTimeout(timeout);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     if (data && data.clients) {
@@ -818,7 +821,7 @@ async function fbLoad() {
       return data;
     }
   } catch(e) {
-    console.warn('Firebase load error, using localStorage:', e);
+    console.warn('Firebase load failed:', e.message);
   }
   const local = localStorage.getItem(KEY);
   return local ? JSON.parse(local) : null;
@@ -885,46 +888,56 @@ function showToast(msg, color) {
 
 async function load() {
   showLoading(true);
-  const data = await fbLoad();
-  if (data && data.clients && data.clients.length > 0) {
-    // Firebase a des données → on les utilise TELLES QUELLES, sans rien injecter
-    S = data;
-    S.eids = S.eids || {};
-    // Juste s'assurer que les membres requis existent (sans écraser)
-    if (!S.equipe) S.equipe = [];
-    if (!S.depenses) S.depenses = [];
-    const requiredMembers = [
-      { id: 1,  nom: 'Oren',    role: 'confirmateur', frais: 200, tel: '', notes: 'Confirmateur HABINNOVA' },
-      { id: 10, nom: 'Hillel',  role: 'commercial',   frais: 0,   tel: '', notes: '' },
-      { id: 11, nom: 'Yohan',   role: 'commercial',   frais: 0,   tel: '', notes: '' },
-      { id: 12, nom: 'Zizou',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
-      { id: 13, nom: 'Lea',     role: 'telepro',      frais: 0,   tel: '', notes: '' },
-      { id: 14, nom: 'Ruben',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
-      { id: 15, nom: 'Lior',    role: 'commercial',   frais: 0,   tel: '', notes: '' },
-      { id: 16, nom: 'Sabrina', role: 'telepro',      frais: 0,   tel: '', notes: '' },
-    ];
-    let membresAjoutes = false;
-    requiredMembers.forEach(rm => {
-      if (!S.equipe.find(m => m.id === rm.id || m.nom === rm.nom)) {
-        S.equipe.push(rm);
-        membresAjoutes = true;
+  try {
+    const data = await fbLoad();
+    if (data && data.clients && data.clients.length > 0) {
+      S = data;
+      S.eids = S.eids || {};
+      if (!S.equipe) S.equipe = [];
+      if (!S.depenses) S.depenses = [];
+      const requiredMembers = [
+        { id: 1,  nom: 'Oren',    role: 'confirmateur', frais: 200, tel: '', notes: 'Confirmateur HABINNOVA' },
+        { id: 10, nom: 'Hillel',  role: 'commercial',   frais: 0,   tel: '', notes: '' },
+        { id: 11, nom: 'Yohan',   role: 'commercial',   frais: 0,   tel: '', notes: '' },
+        { id: 12, nom: 'Zizou',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
+        { id: 13, nom: 'Lea',     role: 'telepro',      frais: 0,   tel: '', notes: '' },
+        { id: 14, nom: 'Ruben',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
+        { id: 15, nom: 'Lior',    role: 'commercial',   frais: 0,   tel: '', notes: '' },
+        { id: 16, nom: 'Sabrina', role: 'telepro',      frais: 0,   tel: '', notes: '' },
+      ];
+      let membresAjoutes = false;
+      requiredMembers.forEach(rm => {
+        if (!S.equipe.find(m => m.id === rm.id || m.nom === rm.nom)) {
+          S.equipe.push(rm); membresAjoutes = true;
+        }
+      });
+      if (membresAjoutes) await fbSave(S);
+    } else {
+      // Firebase vide ou erreur → init depuis localStorage ou démo
+      const local = localStorage.getItem(KEY);
+      if (local) {
+        try { S = JSON.parse(local); S.eids = S.eids || {}; }
+        catch(e) { initDemo(); }
+      } else {
+        initDemo();
+        S.eids = S.eids || {};
+        if (!S.installateurs || S.installateurs.length === 0) initInstallateurs();
+        if (!S.equipe || S.equipe.length === 0) initEquipe();
+        if (!S.depenses) S.depenses = [];
+        if (!S.clients) S.clients = [];
+        injectRealClients();
+        injectRealDepenses();
+        await fbSave(S);
       }
-    });
-    // Sauvegarder seulement si on a ajouté des membres manquants
-    if (membresAjoutes) await fbSave(S);
-  } else {
-    // Firebase est vide → première initialisation
-    initDemo();
-    S.eids = S.eids || {};
-    if (!S.installateurs || S.installateurs.length === 0) initInstallateurs();
-    if (!S.equipe || S.equipe.length === 0) initEquipe();
-    if (!S.depenses) S.depenses = [];
-    if (!S.clients) S.clients = [];
-    injectRealClients();
-    injectRealDepenses();
-    await fbSave(S);
+    }
+  } catch(e) {
+    console.error('Load error:', e);
+    // En cas d'erreur Firebase, utiliser localStorage
+    const local = localStorage.getItem(KEY);
+    if (local) { try { S = JSON.parse(local); S.eids = S.eids || {}; } catch(e2) {} }
+  } finally {
+    showLoading(false);
   }
-  showLoading(false);
 }
 
 function showLoading(on) {
