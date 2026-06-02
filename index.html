@@ -406,11 +406,30 @@ tbody tr:hover td{background:var(--bg3);}
 <!-- DEPENSES LEADS -->
 <div class="page" id="page-depenses">
   <div class="ptop">
-    <div><div class="ptitle">D&eacute;penses</div><div class="psub">Toutes les d&eacute;penses HT — leads, marketing, mat&eacute;riel, frais g&eacute;n&eacute;raux…</div></div>
-    <button class="btn bp" onclick="openDepenseModal()">+ Ajouter une d&eacute;pense</button>
+    <div><div class="ptitle">D&eacute;penses</div><div class="psub">Vue s&eacute;par&eacute;e par associ&eacute;</div></div>
   </div>
-  <!-- FILTERS -->
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+
+  <!-- TOTAUX GLOBAUX -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+    <div class="sc" style="border:1px solid rgba(231,76,60,.25)">
+      <div class="sl">Total combined</div>
+      <div class="sv" style="color:var(--red)" id="dep-total">-</div>
+      <div class="sh" id="dep-period">toutes p&eacute;riodes</div>
+    </div>
+    <div class="sc" style="border:1px solid rgba(74,158,255,.25)">
+      <div class="sl">&#128100; Yohan</div>
+      <div class="sv" style="color:var(--blue)" id="dep-yohan">-</div>
+      <div class="sh" id="dep-yohan-nb">-</div>
+    </div>
+    <div class="sc" style="border:1px solid rgba(26,188,156,.25)">
+      <div class="sl">&#128100; Ilan</div>
+      <div class="sv" style="color:var(--teal)" id="dep-ilan">-</div>
+      <div class="sh" id="dep-ilan-nb">-</div>
+    </div>
+  </div>
+
+  <!-- FILTRE DATE GLOBAL -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
     <div class="fg" style="min-width:130px"><label>Du</label><input type="date" id="dep-f-from" onchange="renderDepenses()"/></div>
     <div class="fg" style="min-width:130px"><label>Au</label><input type="date" id="dep-f-to" onchange="renderDepenses()"/></div>
     <div class="fg" style="min-width:150px"><label>Cat&eacute;gorie</label>
@@ -424,30 +443,50 @@ tbody tr:hover td{background:var(--bg3);}
         <option value="autre">Autre</option>
       </select>
     </div>
-    <div class="fg" style="min-width:150px"><label>Pay&eacute; par</label>
-      <select id="dep-f-par" onchange="renderDepenses()" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rr);color:var(--text);padding:9px 11px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
-        <option value="">Yohan &amp; Ilan</option>
-        <option value="Yohan">Yohan</option>
-        <option value="Ilan">Ilan</option>
-      </select>
+    <button class="btn bg_ bsm" onclick="clearDepFilters()">R&eacute;init.</button>
+  </div>
+
+  <!-- 2 COLONNES -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+    <!-- COLONNE YOHAN -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--b2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--blue);font-family:'Syne',sans-serif">Y</div>
+          <div>
+            <div style="font-weight:600;font-size:14px">Yohan</div>
+            <div style="font-size:11px;color:var(--text3)" id="dep-yohan-count">-</div>
+          </div>
+        </div>
+        <button class="btn bp bsm" onclick="openDepenseModalFor('Yohan')">+ D&eacute;pense</button>
+      </div>
+      <div class="tw" style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Date</th><th>Cat.</th><th>Description</th><th>Total</th><th></th>
+        </tr></thead><tbody id="dep-tbl-yohan"></tbody></table>
+      </div>
     </div>
-    <button class="btn bg_ bsm" onclick="clearDepFilters()" style="margin-top:14px">R&eacute;initialiser</button>
-  </div>
-  <!-- STATS -->
-  <div class="sg" style="grid-template-columns:repeat(5,1fr)">
-    <div class="sc"><div class="sl">Total d&eacute;pens&eacute; HT</div><div class="sv" style="color:var(--red)" id="dep-total">-</div><div class="sh" id="dep-period">p&eacute;riode s&eacute;lectionn&eacute;e</div></div>
-    <div class="sc"><div class="sl">Dont leads</div><div class="sv" style="color:var(--orange)" id="dep-leads">-</div><div class="sh" id="dep-leads-nb">0 leads</div></div>
-    <div class="sc"><div class="sl">Autres d&eacute;penses</div><div class="sv" style="color:var(--purple)" id="dep-other">-</div><div class="sh">hors leads</div></div>
-    <div class="sc"><div class="sl">Pay&eacute; par Yohan</div><div class="sv" style="color:var(--blue)" id="dep-yohan">-</div><div class="sh">total Yohan</div></div>
-    <div class="sc"><div class="sl">Pay&eacute; par Ilan</div><div class="sv" style="color:var(--teal)" id="dep-ilan">-</div><div class="sh">total Ilan</div></div>
-    <div class="sc"><div class="sl">Nb op&eacute;rations</div><div class="sv" style="color:var(--blue)" id="dep-count">-</div><div class="sh">enregistr&eacute;es</div></div>
-  </div>
-  <div class="tw">
-    <div class="th2"><span style="font-size:12px;font-weight:500">D&eacute;tail des d&eacute;penses</span></div>
-    <table><thead><tr>
-      <th>Date</th><th>Cat&eacute;gorie</th><th>Description</th><th>Fournisseur</th>
-      <th>Qte / unit&eacute;</th><th>Prix unit. HT</th><th>Total HT</th><th>Pay&eacute; par</th><th>Notes</th><th></th>
-    </tr></thead><tbody id="dep-tbl"></tbody></table>
+
+    <!-- COLONNE ILAN -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--t2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--teal);font-family:'Syne',sans-serif">I</div>
+          <div>
+            <div style="font-weight:600;font-size:14px">Ilan</div>
+            <div style="font-size:11px;color:var(--text3)" id="dep-ilan-count">-</div>
+          </div>
+        </div>
+        <button class="btn bp bsm" onclick="openDepenseModalFor('Ilan')">+ D&eacute;pense</button>
+      </div>
+      <div class="tw" style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Date</th><th>Cat.</th><th>Description</th><th>Total</th><th></th>
+        </tr></thead><tbody id="dep-tbl-ilan"></tbody></table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2228,7 +2267,6 @@ function clearDepFilters() {
   document.getElementById('dep-f-from').value = '';
   document.getElementById('dep-f-to').value = '';
   document.getElementById('dep-f-cat').value = '';
-  document.getElementById('dep-f-par').value = '';
   renderDepenses();
 }
 
@@ -2236,44 +2274,44 @@ function renderDepenses() {
   const from = document.getElementById('dep-f-from').value;
   const to = document.getElementById('dep-f-to').value;
   const cat = document.getElementById('dep-f-cat').value;
-  const par = document.getElementById('dep-f-par').value;
-  const list = S.depenses.filter(d => {
+
+  const filtered = S.depenses.filter(d => {
     if (from && d.date < from) return false;
     if (to && d.date > to) return false;
     if (cat && d.cat !== cat) return false;
-    if (par && d.payePar !== par) return false;
     return true;
   });
-  const tot = list.reduce((s, d) => s + (d.total || 0), 0);
-  const leads = list.filter(d => d.cat === 'leads');
-  const totLeads = leads.reduce((s, d) => s + (d.total || 0), 0);
-  const nbLeads = leads.reduce((s, d) => s + (d.qty || 0), 0);
-  const totOther = tot - totLeads;
-  // Per-associé totals (always on full list regardless of par filter)
-  const totYohan = S.depenses.filter(d => d.payePar === 'Yohan' && (!from || d.date >= from) && (!to || d.date <= to) && (!cat || d.cat === cat)).reduce((s, d) => s + (d.total || 0), 0);
-  const totIlan  = S.depenses.filter(d => d.payePar === 'Ilan'  && (!from || d.date >= from) && (!to || d.date <= to) && (!cat || d.cat === cat)).reduce((s, d) => s + (d.total || 0), 0);
-  document.getElementById('dep-total').textContent = f(tot);
-  document.getElementById('dep-leads').textContent = f(totLeads);
-  document.getElementById('dep-leads-nb').textContent = nbLeads + ' lead' + (nbLeads > 1 ? 's' : '');
-  document.getElementById('dep-other').textContent = f(totOther);
-  document.getElementById('dep-yohan').textContent = f(totYohan);
-  document.getElementById('dep-ilan').textContent = f(totIlan);
-  document.getElementById('dep-count').textContent = list.length;
-  const periodStr = (from || to) ? ((from ? new Date(from).toLocaleDateString('fr-FR') : '...') + ' \u2192 ' + (to ? new Date(to).toLocaleDateString('fr-FR') : '...')) : 'toutes p\u00e9riodes';
+
+  const byYohan = filtered.filter(d => d.payePar === 'Yohan');
+  const byIlan  = filtered.filter(d => d.payePar === 'Ilan');
+  const totY = byYohan.reduce((s, d) => s + (d.total || 0), 0);
+  const totI = byIlan.reduce((s, d) => s + (d.total || 0), 0);
+  const totAll = totY + totI;
+
+  // Update header stats
+  document.getElementById('dep-total').textContent = f(totAll);
+  document.getElementById('dep-yohan').textContent = f(totY);
+  document.getElementById('dep-yohan-nb').textContent = byYohan.length + ' opération(s)';
+  document.getElementById('dep-ilan').textContent = f(totI);
+  document.getElementById('dep-ilan-nb').textContent = byIlan.length + ' opération(s)';
+  document.getElementById('dep-yohan-count').textContent = byYohan.length + ' dépenses • ' + f(totY);
+  document.getElementById('dep-ilan-count').textContent = byIlan.length + ' dépenses • ' + f(totI);
+  const periodStr = (from || to) ? ((from ? new Date(from).toLocaleDateString('fr-FR') : '...') + ' → ' + (to ? new Date(to).toLocaleDateString('fr-FR') : '...')) : 'toutes périodes';
   document.getElementById('dep-period').textContent = periodStr;
-  const parColors = { Yohan: 'var(--blue)', Ilan: 'var(--teal)' };
-  document.getElementById('dep-tbl').innerHTML = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(d =>
-    '<tr><td style="white-space:nowrap">' + (d.date ? new Date(d.date).toLocaleDateString('fr-FR') : '--') + '</td>' +
-    '<td><span class="b ' + (CAT_COLORS[d.cat] || 'bgr') + '">' + (CAT_LABELS[d.cat] || d.cat || '--') + '</span></td>' +
-    '<td><strong>' + (d.desc || d.fournisseur || '--') + '</strong></td>' +
-    '<td style="color:var(--text2)">' + (d.fournisseur || '--') + '</td>' +
-    '<td style="color:var(--text2)">' + (d.qty > 0 ? d.qty : '--') + '</td>' +
-    '<td>' + (d.pu > 0 ? f(d.pu) : '--') + '</td>' +
-    '<td style="color:var(--red);font-weight:600">' + f(d.total) + '</td>' +
-    '<td><span class="b" style="background:' + (parColors[d.payePar] ? parColors[d.payePar].replace('var(--','rgba(').replace(')',', .15)') : 'var(--bg4)') + ';color:' + (parColors[d.payePar] || 'var(--text2)') + ';border:1px solid ' + (parColors[d.payePar] || 'var(--border)') + '">' + (d.payePar || '--') + '</span></td>' +
-    '<td style="color:var(--text2);font-size:12px">' + (d.notes || '') + '</td>' +
-    '<td><button class="btn bg_ bxs" onclick="editDep(' + d.id + ')">edit</button> <button class="btn bd bxs" onclick="delDep(' + d.id + ')">X</button></td></tr>'
-  ).join('') || '<tr><td colspan="10"><div class="empty"><div style="font-size:28px">&#128176;</div><div>Aucune d\u00e9pense</div></div></td></tr>';
+
+  // Row builder — compact for split view
+  const mkRows = (list) => [...list].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(d =>
+    '<tr>' +
+    '<td style="white-space:nowrap;color:var(--text2);font-size:11px">' + (d.date ? new Date(d.date).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'2-digit'}) : '--') + '</td>' +
+    '<td><span class="b ' + (CAT_COLORS[d.cat] || 'bgr') + '" style="font-size:9px">' + (CAT_LABELS[d.cat]?.slice(0,4) || '--') + '</span></td>' +
+    '<td style="font-size:12px"><strong>' + (d.desc || d.fournisseur || '--') + '</strong>' + (d.qty > 0 && d.pu > 0 ? '<div style="font-size:10px;color:var(--text3)">' + d.qty + ' × ' + d.pu + '€</div>' : '') + '</td>' +
+    '<td style="color:var(--red);font-weight:600;white-space:nowrap">' + f(d.total) + '</td>' +
+    '<td style="white-space:nowrap"><button class="btn bg_ bxs" onclick="editDep(' + d.id + ')">✏</button> <button class="btn bd bxs" onclick="delDep(' + d.id + ')">✕</button></td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="5"><div class="empty" style="padding:20px">Aucune dépense</div></td></tr>';
+
+  document.getElementById('dep-tbl-yohan').innerHTML = mkRows(byYohan);
+  document.getElementById('dep-tbl-ilan').innerHTML = mkRows(byIlan);
 }
 function pickFournisseur(nom, prix) {
   document.getElementById('dep-four').value = nom;
@@ -2291,6 +2329,13 @@ function pickFournisseur(nom, prix) {
 }
   const cat = document.getElementById('dep-cat').value;
   document.getElementById('dep-qty-wrap').style.display = cat === 'leads' ? 'block' : 'none';
+}
+function openDepenseModalFor(payePar) {
+  openDepenseModal();
+  setTimeout(() => {
+    const el = document.getElementById('dep-par');
+    if (el) el.value = payePar;
+  }, 50);
 }
 function openDepenseModal(id) {
   S.eids.dep = id || null;
