@@ -2278,7 +2278,6 @@ function pickFournisseur(nom, prix) {
   document.getElementById('dep-cat').value = 'leads';
   document.getElementById('dep-pu').value = prix;
   toggleLeadFields();
-  // Highlight active button
   document.querySelectorAll('#ov-dep .btn').forEach(b => {
     b.style.background = '';
     b.style.color = 'var(--blue)';
@@ -2286,6 +2285,7 @@ function pickFournisseur(nom, prix) {
   event.currentTarget.style.background = 'rgba(74,158,255,.2)';
   calcDep();
 }
+function toggleLeadFields() {
   const cat = document.getElementById('dep-cat').value;
   document.getElementById('dep-qty-wrap').style.display = cat === 'leads' ? 'block' : 'none';
 }
