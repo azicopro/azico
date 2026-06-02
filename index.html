@@ -787,23 +787,34 @@ let S = {
   pass: '', eids: {}
 };
 
-// ===================== FIREBASE =====================
-const FB_URL = 'https://solarcrm-ico-default-rtdb.europe-west1.firebasedatabase.app/solarcrm.json?auth=';
-const FB_KEY = 'AIzaSyAUzMb3KIAzKiEqc8kyq8GikjS_4VLcm9E';
-// On utilise la REST API Firebase Realtime Database (pas besoin du SDK npm)
-const FB_REST = 'https://solarcrm-ico-default-rtdb.europe-west1.firebasedatabase.app/solarcrm.json';
+// ===================== SUPABASE =====================
+const SB_URL = 'https://ocpzurbusbzztmlonmnm.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcHp1cmJ1c2J6enRtbG9ubW5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDAyMTUsImV4cCI6MjA5NTk3NjIxNX0.2uHnVlf6pYYtnHqHM50_RnKbndYZ_DmoJq1Ry0h38v4';
+const SB_HEADERS = {
+  'Content-Type': 'application/json',
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Prefer': 'return=minimal'
+};
 
 async function fbSave(data) {
   try {
-    const r = await fetch(FB_REST, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+    const r = await fetch(SB_URL + '/rest/v1/crm_data?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ data: data, updated_at: new Date().toISOString() })
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    localStorage.setItem(KEY, JSON.stringify(data)); // backup local
+    if (!r.ok) {
+      // Si la ligne n'existe pas encore, on la crée
+      await fetch(SB_URL + '/rest/v1/crm_data', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id: 'main', data: data, updated_at: new Date().toISOString() })
+      });
+    }
+    localStorage.setItem(KEY, JSON.stringify(data));
   } catch(e) {
-    console.warn('Firebase save error, local only:', e);
+    console.warn('Supabase save error:', e.message);
     localStorage.setItem(KEY, JSON.stringify(data));
   }
 }
@@ -812,16 +823,19 @@ async function fbLoad() {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    const r = await fetch(FB_REST, { signal: controller.signal });
+    const r = await fetch(SB_URL + '/rest/v1/crm_data?id=eq.main&select=data', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      signal: controller.signal
+    });
     clearTimeout(timeout);
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    if (data && data.clients) {
-      localStorage.setItem(KEY, JSON.stringify(data));
-      return data;
+    const rows = await r.json();
+    if (rows && rows.length > 0 && rows[0].data && rows[0].data.clients) {
+      localStorage.setItem(KEY, JSON.stringify(rows[0].data));
+      return rows[0].data;
     }
   } catch(e) {
-    console.warn('Firebase load failed:', e.message);
+    console.warn('Supabase load failed:', e.message);
   }
   const local = localStorage.getItem(KEY);
   return local ? JSON.parse(local) : null;
@@ -1819,15 +1833,16 @@ function startSync() {
   stopSync();
   syncInterval = setInterval(async () => {
     try {
-      const r = await fetch(FB_REST);
+      const r = await fetch(SB_URL + '/rest/v1/crm_data?id=eq.main&select=data', {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      });
       if (!r.ok) return;
-      const data = await r.json();
-      if (!data || !data.clients) return;
-      // Comparer via timestamp de dernière modification
-      const remoteTs = data._lastModified || 0;
+      const rows = await r.json();
+      if (!rows || !rows.length || !rows[0].data?.clients) return;
+      const remoteTs = rows[0].data._lastModified || 0;
       const localTs = S._lastModified || 0;
       if (remoteTs > localTs) {
-        S = data;
+        S = rows[0].data;
         S.eids = S.eids || {};
         localStorage.setItem(KEY, JSON.stringify(S));
         updateUndoBtn();
@@ -1836,7 +1851,7 @@ function startSync() {
           const id = activePage.id.replace('page-', '');
           ({ dash: renderDash, clients: renderClients, depenses: renderDepenses, bilan: renderBilan, paiements: renderPaiements })[id]?.();
         }
-        const who = data._modifiedBy || 'quelqu\'un';
+        const who = S._modifiedBy || 'quelqu\'un';
         showToast('🔄 ' + who + ' a modifié les données', 'var(--blue)');
       }
     } catch(e) {}
