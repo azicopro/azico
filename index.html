@@ -896,72 +896,6 @@ function showToast(msg, color) {
   t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
 }
 
-async function load() {
-  showLoading(true);
-  try {
-    const data = await fbLoad();
-    if (data && data.clients && data.clients.length > 0) {
-      S = data;
-      S.eids = S.eids || {};
-      if (!S.equipe) S.equipe = [];
-      if (!S.depenses) S.depenses = [];
-      const requiredMembers = [
-        { id: 1,  nom: 'Oren',    role: 'confirmateur', frais: 200, tel: '', notes: 'Confirmateur HABINNOVA' },
-        { id: 10, nom: 'Hillel',  role: 'commercial',   frais: 0,   tel: '', notes: '' },
-        { id: 11, nom: 'Yohan',   role: 'commercial',   frais: 0,   tel: '', notes: '' },
-        { id: 12, nom: 'Zizou',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
-        { id: 13, nom: 'Lea',     role: 'telepro',      frais: 0,   tel: '', notes: '' },
-        { id: 14, nom: 'Ruben',   role: 'telepro',      frais: 0,   tel: '', notes: '' },
-        { id: 15, nom: 'Lior',    role: 'commercial',   frais: 0,   tel: '', notes: '' },
-        { id: 16, nom: 'Sabrina', role: 'telepro',      frais: 0,   tel: '', notes: '' },
-      ];
-      let membresAjoutes = false;
-      requiredMembers.forEach(rm => {
-        if (!S.equipe.find(m => m.id === rm.id || m.nom === rm.nom)) {
-          S.equipe.push(rm); membresAjoutes = true;
-        }
-      });
-      if (membresAjoutes) await fbSave(S);
-    } else {
-      // Firebase vide ou erreur → init depuis localStorage ou démo
-      const local = localStorage.getItem(KEY);
-      if (local) {
-        try { S = JSON.parse(local); S.eids = S.eids || {}; }
-        catch(e) { initDemo(); }
-      } else {
-        initDemo();
-        S.eids = S.eids || {};
-        if (!S.installateurs || S.installateurs.length === 0) initInstallateurs();
-        if (!S.equipe || S.equipe.length === 0) initEquipe();
-        if (!S.depenses) S.depenses = [];
-        if (!S.clients) S.clients = [];
-        injectRealClients();
-        injectRealDepenses();
-        await fbSave(S);
-      }
-    }
-  } catch(e) {
-    console.error('Load error:', e);
-    // En cas d'erreur Firebase, utiliser localStorage
-    const local = localStorage.getItem(KEY);
-    if (local) { try { S = JSON.parse(local); S.eids = S.eids || {}; } catch(e2) {} }
-  } finally {
-    showLoading(false);
-  }
-}
-
-function showLoading(on) {
-  let el = document.getElementById('fb-loading');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'fb-loading';
-    el.style.cssText = 'position:fixed;inset:0;background:rgba(11,15,21,.92);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px';
-    el.innerHTML = '<div style="font-size:36px">⚡</div><div style="font-family:Syne,sans-serif;font-size:18px;color:var(--accent);font-weight:600">SolarCRM</div><div style="font-size:13px;color:var(--text2)">Connexion à Firebase...</div>';
-    document.body.appendChild(el);
-  }
-  el.style.display = on ? 'flex' : 'none';
-}
-
 function initInstallateurs() {
   S.installateurs = [
     {
@@ -1803,6 +1737,7 @@ function doLogin(e) {
   if (u.pass !== pass) { alert('Mot de passe incorrect'); return; }
   localStorage.setItem(KEY_SESSION, JSON.stringify({ user: u.display, ts: Date.now() }));
   showApp(u.display);
+  syncFromSupabase(); // sync Supabase en arrière-plan après login
 }
 
 function showApp(user) {
@@ -1824,7 +1759,7 @@ function doLogout() {
   document.getElementById('l-pass').value = '';
 }
 
-// Sync automatique — recharge depuis Firebase toutes les 8 secondes
+// Sync automatique — vérifie Supabase toutes les 5 secondes
 function startSync() {
   stopSync();
   syncInterval = setInterval(async () => {
@@ -2743,22 +2678,71 @@ document.getElementById('m-role').addEventListener('change', function() {
 
 // ===================== INIT =====================
 (async () => {
-  await load();
-  // Restaurer session depuis localStorage (persiste entre les refresh)
+  // 1. Charger depuis localStorage d'abord (instantané)
+  const local = localStorage.getItem(KEY);
+  if (local) {
+    try { S = JSON.parse(local); S.eids = S.eids || {}; } catch(e) {}
+  }
+  if (!S.clients || S.clients.length === 0) {
+    initDemo();
+  }
+
+  // 2. Vérifier session sauvegardée
   const _sess = localStorage.getItem(KEY_SESSION);
   if (_sess) {
     try {
       const { user } = JSON.parse(_sess);
       if (user && Object.values(USERS).find(u => u.display === user)) {
+        // Session valide → montrer l'app, puis sync Supabase en arrière-plan
         showApp(user);
+        syncFromSupabase(); // async, non-bloquant
         return;
       }
     } catch(e) {}
   }
-  // Pas de session → afficher login
+
+  // 3. Pas de session → afficher login
   document.getElementById('login-screen').style.display = 'flex';
-  // Enter géré nativement par le <form>
 })();
+
+// Sync depuis Supabase en arrière-plan (appelé après login)
+async function syncFromSupabase() {
+  try {
+    showToast('⟳ Synchronisation...', 'var(--text3)');
+    const r = await fetch(SB_URL + '/rest/v1/crm_data?id=eq.main&select=data', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const rows = await r.json();
+    if (rows && rows.length > 0 && rows[0].data && rows[0].data.clients && rows[0].data.clients.length > 0) {
+      const remoteTs = rows[0].data._lastModified || 0;
+      const localTs = S._lastModified || 0;
+      if (remoteTs >= localTs) {
+        S = rows[0].data;
+        S.eids = S.eids || {};
+        localStorage.setItem(KEY, JSON.stringify(S));
+        // Rafraîchir la page active
+        const activePage = document.querySelector('.page.active');
+        if (activePage) {
+          const id = activePage.id.replace('page-', '');
+          ({ dash: renderDash, clients: renderClients, depenses: renderDepenses, bilan: renderBilan, paiements: renderPaiements, installateurs: renderInstallateurs, equipe: renderEquipe })[id]?.();
+        }
+        showToast('✓ Données synchronisées', 'var(--green)');
+      } else {
+        // Données locales plus récentes → sauvegarder sur Supabase
+        await fbSave(S);
+        showToast('✓ Données envoyées', 'var(--green)');
+      }
+    } else {
+      // Supabase vide → envoyer les données locales
+      await fbSave(S);
+      showToast('✓ Données sauvegardées', 'var(--green)');
+    }
+  } catch(e) {
+    console.warn('Sync error:', e.message);
+    showToast('⚠ Hors ligne - données locales', 'var(--orange)');
+  }
+}
 </script>
 </body>
 </html>
