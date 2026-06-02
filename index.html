@@ -790,27 +790,23 @@ let S = {
 // ===================== SUPABASE =====================
 const SB_URL = 'https://ocpzurbusbzztmlonmnm.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcHp1cmJ1c2J6enRtbG9ubW5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDAyMTUsImV4cCI6MjA5NTk3NjIxNX0.2uHnVlf6pYYtnHqHM50_RnKbndYZ_DmoJq1Ry0h38v4';
-const SB_HEADERS = {
-  'Content-Type': 'application/json',
-  'apikey': SB_KEY,
-  'Authorization': 'Bearer ' + SB_KEY,
-  'Prefer': 'return=minimal'
-};
 
 async function fbSave(data) {
   try {
-    const r = await fetch(SB_URL + '/rest/v1/crm_data?id=eq.main', {
-      method: 'PATCH',
-      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ data: data, updated_at: new Date().toISOString() })
+    // Upsert = insert ou update selon si la ligne existe
+    const r = await fetch(SB_URL + '/rest/v1/crm_data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ id: 'main', data: data, updated_at: new Date().toISOString() })
     });
     if (!r.ok) {
-      // Si la ligne n'existe pas encore, on la crée
-      await fetch(SB_URL + '/rest/v1/crm_data', {
-        method: 'POST',
-        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ id: 'main', data: data, updated_at: new Date().toISOString() })
-      });
+      const err = await r.text();
+      console.warn('Supabase save HTTP ' + r.status + ':', err);
     }
     localStorage.setItem(KEY, JSON.stringify(data));
   } catch(e) {
