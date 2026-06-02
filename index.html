@@ -659,7 +659,16 @@ tbody tr:hover td{background:var(--bg3);}
       </select>
     </div>
     <div class="fg fc"><label>Description *</label><input type="text" id="dep-desc" placeholder="ex: Achat leads semaine 01, Loyer bureau..."/></div>
-    <div class="fg fc"><label>Fournisseur</label><input type="text" id="dep-four" placeholder="ex: LeadSolaire.fr"/></div>
+    <div class="fg fc">
+      <label>Fournisseur</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+        <button type="button" onclick="pickFournisseur('ZR7',33)" class="btn bg_ bsm" style="border-color:rgba(74,158,255,.3);color:var(--blue)">ZR7 — 33€</button>
+        <button type="button" onclick="pickFournisseur('MDL',34)" class="btn bg_ bsm" style="border-color:rgba(74,158,255,.3);color:var(--blue)">MDL — 34€</button>
+        <button type="button" onclick="pickFournisseur('WEBHM',34)" class="btn bg_ bsm" style="border-color:rgba(74,158,255,.3);color:var(--blue)">WEBHM — 34€</button>
+        <button type="button" onclick="pickFournisseur('TOUITOU',32)" class="btn bg_ bsm" style="border-color:rgba(74,158,255,.3);color:var(--blue)">TOUITOU — 32€</button>
+      </div>
+      <input type="text" id="dep-four" placeholder="ou saisissez un fournisseur..."/>
+    </div>
     <div class="fg fc"><label>Pay&eacute; par *</label>
       <select id="dep-par" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rr);color:var(--text);padding:9px 11px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
         <option value="Yohan">Yohan</option>
@@ -2266,7 +2275,20 @@ function renderDepenses() {
     '<td><button class="btn bg_ bxs" onclick="editDep(' + d.id + ')">edit</button> <button class="btn bd bxs" onclick="delDep(' + d.id + ')">X</button></td></tr>'
   ).join('') || '<tr><td colspan="10"><div class="empty"><div style="font-size:28px">&#128176;</div><div>Aucune d\u00e9pense</div></div></td></tr>';
 }
-function toggleLeadFields() {
+function pickFournisseur(nom, prix) {
+  document.getElementById('dep-four').value = nom;
+  document.getElementById('dep-desc').value = 'LEAD ' + nom;
+  document.getElementById('dep-cat').value = 'leads';
+  document.getElementById('dep-pu').value = prix;
+  toggleLeadFields();
+  // Highlight active button
+  document.querySelectorAll('#ov-dep .btn').forEach(b => {
+    b.style.background = '';
+    b.style.color = 'var(--blue)';
+  });
+  event.currentTarget.style.background = 'rgba(74,158,255,.2)';
+  calcDep();
+}
   const cat = document.getElementById('dep-cat').value;
   document.getElementById('dep-qty-wrap').style.display = cat === 'leads' ? 'block' : 'none';
 }
